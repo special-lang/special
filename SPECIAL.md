@@ -8,7 +8,7 @@
 >
 > **Before anything else, check for an `app` block.** With one, you build software. Without one, you do the work yourself. See "Two modes: build it, or do it." Getting this wrong is the most expensive mistake you can make here.
 
-Special 0.1 · draft
+Special v0.1 · draft
 
 ## How to read this file
 
@@ -176,8 +176,8 @@ surfaces/          how people interact with it
 connections/       how it interacts with other systems
 .settings.example  setting names with placeholder values (committed)
 .settings          the real values and secrets (private)
-.special/          Special's own files: the lock, extra specs, helpers
-AGENTS.md          one line, pointing every agent here
+.special/          Special's own files: the lock, extra specs, helpers, run records
+AGENTS.md          a short note pointing every agent here
 ```
 
 Put a `.gitkeep` in each empty folder.
@@ -213,7 +213,7 @@ Turn rough writing into clean Special without changing what it means. This is th
 
 1. Find **rough lines**: paragraphs, run-on sentences, lines holding more than one idea, notes pasted from anywhere.
 2. Rewrite them as Special, one idea per line, in the canonical form (see Conventions).
-3. Normalize phrasing: `otherwise` → `else`, `whenever` → `when`, `then` → nothing, `by 6am` → `before 6am`, `by AI` → `using AI`, `email them` → `send them an email`, `text them` → `send them a text`, `tap`/`click` → `choose`, `flow` → `task`, `extends`/`inherits from` → `is a kind of`, `while` → `until` (flip the condition), `flow Ship for an Order` → `task Ship needs an Order`, `X means Y` → `term X means Y`.
+3. Normalize phrasing: `otherwise` → `else`, `whenever` → `when`, `then` → nothing, `by 6am` → `before 6am`, `by AI` → `using AI`, `email them` → `send them an email`, `text them` → `send them a text`, `tap`/`click` → `choose`, `flow` → `task`, `extends`/`inherits from` → `is a kind of`, `while` → `until` (flip the condition), `flow Ship for an Order` → `task Ship needs an Order`, a top-level `X means Y` → `term X means Y` (inside a thing, `it's X means` stays as it is).
 4. Flag what you find, in your reply:
    ```
    ✖ conflict    two lines say different things
@@ -348,15 +348,15 @@ thing Todo
 surface TodoList
   has a form
     has a title field
-    has an "Add" button: adds a Todo, then clears the form
+    has an "Add" button: adds a Todo and clears the form
     show errors beside the title field
 
-  has a list of Todos, unfinished first, then newest first
+  has a list of Todos, unfinished first, newest first
     show a checkbox: marks it done or not done
     show its title
     show a "Delete" button: deletes it
 
-  when there are no Todos: show "Nothing here yet"
+  if there are no Todos: show "Nothing here yet"
 
   story "adding from the list"
     there are no Todos
@@ -423,11 +423,19 @@ connection Messages
 A third: repeating, and failing.
 
 ```special
-task Backup needs a Photo, gives a receipt
+task Backup needs a Photo
   until it's saved or 3 tries have passed
     send it to the Cloud
   if it fails
     put it in Unsaved, because the Cloud wouldn't take it
+
+thing Photo
+  has a file
+
+connection Cloud
+  keeps a copy of each Photo it's sent
+
+term Unsaved means the Photos a person needs to back up by hand
 ```
 
 ---
@@ -446,7 +454,7 @@ say the result
 - Calls run in sequence and wait for their result before the next step.
 - Explicit inputs (`with 4`) take precedence over context. Context may supply an input only when it identifies one unambiguous value; otherwise ask or name it.
 - Inside a called task, its supplied input is the subject of `it`. A nested loop makes its current item the subject until the loop ends. Returning restores the caller's subject.
-- A result takes the name from `gives`: after `FindMatches` (which `gives Matches`), say "the Matches." `the result` is the most recent call's output when nothing better fits.
+- A result takes the name from `gives`: after `FindBook` (which `gives a Book`), say "the Book." `the result` is the most recent call's output when nothing better fits.
 - `gives` describes an output, not an implicit mutation. Changes to existing things must be stated, for example `set the Todo's title to the result`.
 - **`fails` means something broke:** a service was down, a timeout, a crash. It never means "the answer was no." A search that finds nothing has succeeded; it gives `none`. Handle `if it fails` separately, and never treat a failure as "no match."
 - **Yes-or-no tasks** say `gives yes or no` and read like questions: `task PaymentClears needs an Order, gives yes or no`, then `if PaymentClears: Ship it`.
@@ -473,28 +481,35 @@ thing Book
     set its Shelf to the Shelf
     clear its due date
 
+thing Person
+  has a phone number
+  has Books
+
+thing Shelf
+  has a name
+
 when a Person returns a Book
   if the Book is Overdue
     send the Person a text "Welcome back! A little late, but we missed it."
-  Shelve the Book on the Returns Shelf
+  Shelve the Book on the Shelf named "Returns"
 ```
 
 - **Reading a value is possessive:** `the Person's first name`, `its title`, `their Books`. For long chains, `of` reads better: `the name of the Book's Shelf`. Keep chains to two possessives when tidying.
-- **A capitalized verb is a call:** `Shelve the Book on the Returns Shelf`.
+- **A capitalized verb is a call:** `Shelve the Book on the Shelf named "Returns"`.
 - **The receiver** is the noun just before the verb, or the first noun after it whose thing has that task. Other nouns fill the task's `needs` by what they are. `on`, `to`, `for`, and `with` are English.
 - **Inside a thing's task, `it` is the thing itself.** Inputs are called by their noun: `the Person`, `the Shelf`.
-- **A thing defines its own words with `means`, capitalized:** `it's Overdue means its due date is before today`, then `if the Book is Overdue`. A defined word is a name, so it gets a capital wherever it appears. A formula for an existing field keeps the field's lowercase name: `its area means 3.14159 × radius × radius`.
+- **A thing defines its own words with `means`, capitalized:** `it's Overdue means it has a due date and it's before today`, then `if the Book is Overdue`. A defined word is a name, so it gets a capital wherever it appears. A formula for an existing field keeps the field's lowercase name: `its area means 3.14159 × radius × radius`.
 - **`has` a capitalized thing is a link; `belongs to` is ownership.** A Book that `has a Shelf` survives the Shelf. A Page that `belongs to` a Book goes with it.
 - **Lookup order:** the receiver's own tasks, then its parent's (`is a kind of`), then project-wide tasks. When two things could own a call, the noun in the sentence decides. When it could still be either, ask.
 - **People are things.** `the Owner`, `a Manager`, `the Kitchen` are things like any other. When a capitalized noun appears that nothing defines, tidy flags it as `+ new name` and adds a `thing` once confirmed. Never let an undeclared noun quietly become a database table or a person.
 
 ### How a call is resolved
 
-1. **Find the verb.** A capitalized word that names a task. **An exact match wins.** Only if nothing matches exactly, try other forms of the verb (`Shelves`, `Shelved`, `Shelving` → `Shelve`). Any call that needed another form gets a `⚠` in the read-back and its own `call` line in the lock, so the person can see it and pin it. When a form could belong to two tasks, or could be a tense of one (`Read`, `Set`, `Close`), ask.
+1. **Find the verb.** A capitalized word that names a task. **An exact match wins.** Only if nothing matches exactly, try other forms of the verb (`Shelves`, `Shelved`, `Shelving` → `Shelve`). Any call that needed another form gets a `⚠` in the read-back and its own `call` line in the lock, so the person can see it and confirm it. When a form could belong to two tasks, or could be a tense of one (`Read`, `Set`, `Close`), ask.
 2. **Find the receiver.** The noun just before the verb, or the first noun after it whose thing defines the task. If none, use a project-wide task.
 3. **Fill the needs,** in this order: **by kind** (an amount goes to the `amount` need), then **by preposition** when two needs share a kind (`from an Account, to an Account`), then **by position** when neither tells them apart. Position is the last resort; when you used it, flag it and suggest a preposition or a kind.
 4. **Account for every word.** Nothing is silently dropped.
-5. **Write it down.** Record each resolved call in the lock as a `call` line (see The lock). Editors use these lines for go-to-definition, and the next build reuses them instead of resolving again.
+5. **Write it down.** Record each resolved call in the lock as a `call` line (see The lock). The Special editor extension reads these lines for go-to-definition, and the next build reuses them instead of resolving again.
 
 **Articles do the binding, the way they do in English.**
 
@@ -516,7 +531,7 @@ English doesn't always put the verb first. These are all calls:
 | Case | Example | Rule |
 |---|---|---|
 | Subject first | `if the Payment Clears`, `when the Plant Wilts` | A noun just before a capitalized verb is its receiver. |
-| Other verb forms | `when a Book is Shelved`, `if it was Lent`, `if the Payment Clears` | Every form of a task's verb is that task: Shelves, Shelved, Shelving; `Clears` calls `Clear`. Names match by meaning, not spelling; when a near-miss could mean two tasks, ask. Record irregular forms (Lend → Lent) in the lock the first time. `when a Book is Shelved` runs right after `Shelve` finishes. |
+| Other verb forms | `when a Book is Shelved`, `if it was Lent` | When no name matches exactly, other forms of a task's verb reach it: Shelves, Shelved, Shelving; `Clears` calls `Clear`. Each one gets a `⚠` and a `call` line (see How a call is resolved); irregular forms (Lend → Lent) too. When a form could mean two tasks, ask. `when a Book is Shelved` runs right after `Shelve` finishes. |
 | Two inputs of one kind | `Transfer $50 from Checking to Savings` | Prepositions in `needs` become roles: `task Transfer needs an amount, from an Account, to an Account`. Order no longer matters. |
 | Split verbs | `Check the Book In` | The name runs together (`CheckIn`); both `CheckIn the Book` and `Check the Book In` work. Prefer a one-word verb: `Return`. |
 | Verb shares a thing's name | `Book the Room` beside `thing Book` | Position decides: starting a step and followed by a noun, it's a call; after `a`, `the`, or `its`, it's a noun. Flag the clash gently and suggest another verb (`Reserve`). |
@@ -543,7 +558,7 @@ thing Circle is a kind of Shape
     say "It's round."
 ```
 
-A kind gets everything its parent has: fields, rules, tasks, and stories. Every story about Shapes also runs against Circles, which catches a kind that breaks what its stories say, though not every possible difference. Redefine a task to change it. **When an override fails a parent's story, don't fix the code automatically.** Ask whether the override is wrong or the story only applies to the parent; if the latter, move or narrow the story with the person's agreement. This is the one case where a failing story may be the thing that changes. `as a Shape` runs the parent's version; it's English, not a keyword.
+A kind gets everything its parent has: fields, rules, tasks, and stories. Run every story about Shapes against Circles too. That catches a kind that breaks what its stories say, though not every possible difference. Redefine a task to change it. **When an override fails a parent's story, don't fix the code automatically.** Ask whether the override is wrong or the story only applies to the parent; if the latter, move or narrow the story with the person's agreement. This is the one case where a failing story may be the thing that changes. `as a Shape` runs the parent's version; it's English, not a keyword.
 
 ---
 
@@ -558,7 +573,7 @@ app Bakery
 say "The bakery is open"                    # runs once, at start
 
 every day at 6am                            # waits for 6am, every day
-  for each Order due today
+  for each Order picked up today
     PrintTicket with it
 
 when a Customer places an Order             # waits for an order to arrive
@@ -570,10 +585,26 @@ when a Customer places an Order             # waits for an order to arrive
 task PrintTicket needs an Order             # waits until something calls it
   print its cake, its name, and its pickup time
 
+task PaymentClears needs an Order, gives yes or no
+  ask the Payments connection
+
 thing Order                                 # never runs; describes what exists
   has a name
   has a cake
   has a pickup time
+  belongs to a Customer
+
+thing Customer
+  has an email address
+
+thing Kitchen
+  has a printer
+
+connection Payments
+  charges cards
+
+connection Messages
+  sends email and messages
 ```
 
 | Line | When it runs |
@@ -582,9 +613,9 @@ thing Order                                 # never runs; describes what exists
 | `every …` | On a schedule, for as long as the program runs |
 | `when …` | Each time the event happens |
 | `task …` | Only when something calls it |
-| `thing`, `term`, `rule`, `surface`, `connection`, `story` | Never. These describe; they don't do. Rules hold everywhere, all the time. |
+| `thing`, `term`, `rule`, `surface`, `connection`, `story` | Never on their own. These describe; they don't do. Apply rules everywhere, all the time. A surface someone can use does keep the program running (below). |
 
-Inside a block, steps run in order, and each step finishes before the next one starts. A call waits for its task to finish and hand back what it `gives`. `if` checks its branches top to bottom and takes the first that's true. `for each` runs its block once per item, in order. `until` repeats its block until its condition is true.
+Inside a block, steps run in order, and each step finishes before the next one starts. A call waits for its task to finish and hand back what it `gives`. `if` checks its branches top to bottom and takes the first that's true. `for each` runs its block once per item, in order. `until` runs its block, then checks its condition, and repeats until it's true.
 
 If anything is waiting (an `every`, a `when`, a surface someone can use), the program keeps running as a service. If nothing is waiting, it does its top-level steps and stops, like a script. With no `app` block at all, the same order holds, but you carry out the steps yourself (see Two modes).
 
@@ -592,7 +623,7 @@ If anything is waiting (an `every`, a `when`, a surface someone can use), the pr
 
 - **The same `every` never overlaps itself.** If it comes due while its last run is still going, skip the new run and log it. Times missed while the program was down are skipped, not caught up, unless the Special says otherwise.
 - **Each `when` event gets its own run,** started in arrival order. None are dropped.
-- **Waiting on a person or a deadline (`by …`, `within …`) pauses only that run.** Persist its state so it survives restarts and deploys; other runs keep going. When a wait inside a block would last hours or days, suggest the state-based form in the read-back: a status field, and one `when` per change (`when a Receipt's status changes to :approved`).
+- **Waiting on a person or a deadline (`before …`, `within …`) pauses only that run.** Persist its state so it survives restarts and deploys; other runs keep going. When a wait inside a block would last hours or days, suggest the state-based form in the read-back: a status field, and one `when` per change (`when a Receipt's status changes to :approved`).
 - **Effects are recorded as they happen.** After a crash, resume from the last recorded step and never repeat an external effect (a payment, a message) that already completed. When you can't tell whether it completed, stop and flag it rather than retry.
 - **Tasks are not retried** unless the Special says so (`until … or 3 tries have passed`).
 - **External effects should be idempotent where the service allows it** (use an idempotency key or check before writing), so a resumed run can't do something twice.
@@ -608,7 +639,7 @@ Text between `---` lines is an instruction, kept exactly as written. Tidy never 
 
 ```special
 task ChaseLatePayers
-  email everyone who hasn't paid, nicer if it's their first time
+  email every Customer who hasn't paid, nicer if it's their first time
 ```
 
 That's a step. Tidy may reshape it into structure, and lists how it read the words:
@@ -694,9 +725,9 @@ A hole is not an error. It's a "you pick, and tell me what you picked." Leave as
 
 ---
 
-## Optional work using a runtime model
+## Steps that go through a model
 
-`using AI` means this task calls a model while the program runs. `using` names a connection; `by` names who performs the work. The model is a connection like any other, so it's declared, configured, and limited the same way:
+`using AI` routes a task through the `AI` connection, in both modes: in an app, the program calls that model while it runs; in do-it mode, you hand that step to that model. `using` names a connection; `by` names who performs the work. The model is a connection like any other, so it's declared, configured, and limited the same way:
 
 ```special
 task SuggestTitle using AI
@@ -719,7 +750,7 @@ connection AI
 - If a task says `using AI` and no `AI` connection exists, add one (with `xxx` placeholders in `.settings.example`) and say so. Never wire a provider in silently.
 - Add a `rule` saying what may be sent to the model (`rule only note text is sent to it`). Data leaving the program is an external effect, and a rule gets tested like any other.
 
-This task calls a model while the app runs. The Todo app above does not. English instructions alone do not imply a runtime model. In do-it mode, `using AI` means you route that step through the named model (see Two modes).
+In an app, this task calls a model while the app runs. The Todo app above does not: English instructions alone don't imply a runtime model. In do-it mode, `using AI` means you route that step through the named model (see Two modes).
 
 ---
 
@@ -741,9 +772,9 @@ Learn these and you can write almost anything:
 | Settings | `secret` `setting` *(after `needs`)* |
 | Pointing elsewhere | `see` `target` |
 
-That's all of them. Everything else is English: `must`, `never`, `show`, `send`, `put it in`, `else if` (just `else` + `if`). Two words are reserved only in one spot: `is` on a definition line (`thing Circle is a kind of Shape`) and `secret`/`setting` after `needs`. Anywhere else they're ordinary English.
+That's all of them. Everything else is English: `must`, `never`, `show`, `send`, `put it in`, `else if` (just `else` + `if`). A few words are reserved only in one spot: `is` on a definition line (`thing Circle is a kind of Shape`) and `secret`/`setting` after `needs`. Anywhere else they're ordinary English.
 
-- **`is a kind of`** shares everything: the kind gets its parent's fields, rules, tasks, and stories. A parent's stories run against every kind, so a Circle that breaks what's true of every Shape fails a test.
+- **`is a kind of`** shares everything: the kind gets its parent's fields, rules, tasks, and stories. Run a parent's stories against every kind, so a Circle that breaks what's true of every Shape fails a test.
 - **`term`** defines a word for the whole project: `term Overdue means past due and not done`. Use the name anywhere afterward and it carries exactly that meaning. Inside a thing, `it's Overdue means …` defines a word for that thing and `its area means …` works out a field; neither needs `term`.
 - **`belongs to`** means ownership. A Comment that `belongs to` an Issue goes when the Issue goes. `has` only says what something is made of.
 - **`until`** repeats until something is true. Always give it a way out (`or 3 tries have passed`). Prefer it to "while," which in English often means *at the same time*.
@@ -773,8 +804,8 @@ That's all of them. Everything else is English: `must`, `never`, `show`, `send`,
 | Written | Who |
 |---|---|
 | *(nothing)* | the software, with ordinary code |
-| `using AI` | the software calls an AI model at runtime. Marked ✦ wherever it runs |
-| `by Maria`, `by a Reviewer` | a person. The software asks them and waits |
+| `using AI` | the model in `connection AI`. In an app, the software calls it at runtime; in do-it mode, you hand it that step. Marked ✦ in the editor |
+| `by Maria`, `by a Reviewer` | a person. The software (or, in do-it mode, you) asks them and waits |
 | `by OpenLibrary` | an outside system, through its `connection` |
 
 ---
@@ -796,6 +827,7 @@ Tasks are tested through stories on the things they touch. Rules get tests of th
 ```special
 thing Todo
   has a title
+  rule its title must not be blank, or say "Give it a title"
 
   story "a blank title"
     there are no Todos
@@ -838,7 +870,7 @@ Special is deliberately loose. These conventions keep it readable. Follow them w
 - **One idea per line.** If a line says "and then," it's probably two lines.
 - **Headers decide what a block is; steps may contain calls.** A line that starts with a reserved word (`when`, `if`, `for each`, `task`, `thing`, `rule`, …) is a header or a control line. Everything else is a plain step, and a step may contain a call anywhere a capitalized task verb appears (`Shelve the Book`, `if the Payment Clears`). The left edge shows the outline; the calls are inside.
 - **Steps are commands; definitions are statements.** `send them the receipt` happens. `term Overdue means past due and not done` is true. Grammar tells you whether a line runs or holds.
-- **Settings come first.** A block opens with `needs` and `gives`, then its `--- description ---` and `see`, then its steps, then its stories. Callers read the top; the steps fold away.
+- **Contracts come first.** A block opens with `needs` and `gives`, then its `--- description ---` and `see`, then its steps, then its stories. Callers read the top; the steps fold away.
 
 ### Names
 
@@ -851,15 +883,15 @@ Special is deliberately loose. These conventions keep it readable. Follow them w
 - **Fields are required unless marked `(optional)`.** `has a note (optional)`.
 - **If behavior depends on a value, give it a `has` line.** Ordering by "newest" needs `has an added time`; "mine" needs an owner. Never let the code invent a field the Special doesn't show.
 - **Say each fact once.** If the surface says how the list is ordered, don't repeat it in a thing's rules or stories. Two copies drift apart.
-- **A `rule` can end two ways, or both.** `or say "…"` is the message a person sees when something is refused. `because …` is why the rule exists, for the next person who wants to delete it. Neither changes what the rule means: it's one invariant, enforced when changes happen and attacked by tests. `rule its title must not be blank, or say "Give it a title"`; stories can then check the same words.
+- **A `rule` can end two ways, or both.** `or say "…"` is the message a person sees when something is refused. `because …` is why the rule exists, for the next person who wants to delete it. Neither changes what the rule means: it's one invariant. Enforce it when changes happen, and attack it with tests. `rule its title must not be blank, or say "Give it a title"`; stories can then check the same words.
 - **Define a word with `term` as soon as two people could read it differently.** `term Overdue means past due and not done`. "This week," "active," "finished" are all good candidates. A term announces itself first, so readers and tools know a definition is coming.
 
 ### Tasks
 
-- **`needs` says what goes in. `gives` says what comes out.** `task EatFood needs Food, gives a full Belly`. Short contracts fit on the header line; longer ones go on their own lines, first in the block.
+- **`needs` says what goes in. `gives` says what comes out.** `task Deposit needs an amount, gives a receipt`. Short contracts fit on the header line; longer ones go on their own lines, first in the block.
 - **A yes-or-no task gives `yes or no`** and is named like a question: `if PaymentClears`. Keep `fails` for when something breaks.
 - **A need can carry a condition:** `needs an Order with an address`. Flag a questionable call gently and handle unmet needs explicitly. Never proceed with unsafe effects merely to avoid blocking a build.
-- **`for` belongs to loops:** `for each`, `for every`, `for any`. Don't use it to name inputs; that's what `needs` is for.
+- **`for` belongs to loops:** `for each` (`for every` and `for any` read the same way). Don't use it to name inputs; that's what `needs` is for.
 
 ### Control
 
@@ -898,7 +930,7 @@ A surface says what's on a screen and what changes it: its parts, its states (em
 - **Top to bottom, the way a person sees it.** A surface reads like a tour of the screen.
 - **`has` for what's always there; `show` for what depends.** `has a form`, `has a list of Issues`, but `show a "Close" button on open ones`.
 - **Nest parts inside what holds them.** If several lines start with the same subject, they're a group; give them a parent. Lines under a list describe each item, so `show its title` needs no "each."
-- **A colon says what a control does:** `has a "File" button: files an Issue, then clears the form`.
+- **A colon says what a control does:** `has a "File" button: files an Issue and clears the form`.
 - **Labels are exact text, so quote them:** `"File"`, not File.
 - **One-line connections are fine** when there's nothing else to say: `connection SavedIssues` / `keeps every Issue on this device between visits`.
 
@@ -940,7 +972,7 @@ The editor extension may support only part of this draft. Use its diagnostics, b
 
 ## Settings and secrets
 
-**The agent knows the names. The program gets the values.** Secrets never pass through the model.
+**The agent knows the names. The program gets the values.** Never let a secret value pass through you.
 
 Settings use the familiar `.env` format: one `NAME=value` per line, names in capitals with underscores, `#` for notes.
 
@@ -948,7 +980,7 @@ Settings use the familiar `.env` format: one `NAME=value` per line, names in cap
 connection Mail
   needs secret MAIL_API_KEY
   needs setting MAIL_FROM_ADDRESS
-  sends email using Postmark
+  sends email through Postmark
 
   rule it only sends messages someone asked for
   rule it never reads or deletes messages
@@ -981,7 +1013,7 @@ When a connection needs a new name, add it to `.settings.example` with `xxx` and
 
 ### From .settings to the program
 
-On build or run, the settings helper in `.special/helpers/` copies the needed names from `.settings` into `.env` (or straight into the program's environment). The agent runs the helper; it never sees what passes through. The helper:
+On build or run, the settings helper in `.special/helpers/` copies the needed names from `.settings` into `.env` (or straight into the program's environment). If there's no helper yet, write one, keep it small, and show it to the person. Run it; never print or read what it copies. The helper:
 
 - copies only the names Special declares, exactly as written
 - reports names and status only, never values: `MAIL_API_KEY configured`, `MAIL_FROM_ADDRESS missing`
@@ -995,7 +1027,7 @@ A missing secret means the live connection is untested, not that it works. Stori
 
 `start special` adds `.settings`, `.env`, and `.env.*` to `.gitignore`, keeping `.settings.example`. Before a commit, make sure neither private file is tracked, without opening them. If a secret may have leaked, say so without repeating it and recommend replacing the key.
 
-**This file is an instruction, not a lock.** An agent with full access to the folder *can* read `.settings`. For a real guarantee, use the editor's file-exclusion settings, a sandbox, or a password manager that hands the program a key the agent never sees.
+**This file is an instruction, not a lock.** An agent with full access to the folder *can* read `.settings`. Hiding the file in the editor doesn't stop an agent either. The only real protection is outside the agent's reach: a sandbox, or a secret manager that hands the program a key the agent never sees.
 
 ---
 
@@ -1038,7 +1070,7 @@ The lock holds fingerprints from the last successfully verified build and conseq
 decision  things/book.special:4  "if there is exactly one"
           → one result: add it without asking.
             no results: show "No matches. Add it by hand?"
-          answered by kg · 2026-10-03
+          answered by Ada · 2026-10-03
 
 decision  app.special:12  "every Monday at 8am"
           → 8am in the Reader's time zone; UTC if unknown
@@ -1061,15 +1093,15 @@ spec      payments.md   github.com/someone/special-specs @ 4e1c2a0
 - `assumed` decisions appear in `check special` until someone confirms them.
 - **The Special stays the source.** When a person answers a decision that changes behavior, write the answer back into the Special (`thirstiest first` → `most days overdue first, ties by name`) and keep the lock entry only as the record of where it came from. Behavior must be readable without the lock.
 - **Decisions go stale.** Each one depends on the line it came from and the names, fields, and contracts it mentions. When any of those change, mark the decision stale, don't reuse it silently, and present the new reading in the read-back.
-- **`call` lines record how each call was read:** where it is, the phrase exactly as written (from the verb through its last input), and the definition it resolved to. One line per call, on one line, in exactly that shape, because editors parse them. Keep a resolution until the call or that task's contract changes; then resolve again and say so if the answer moved.
-- **`story` and `rule` lines record the last verified build's results:** `passed`, `failed`, or `untested` with a reason. Write what the tests actually did. A story whose test couldn't run (missing credentials, no network) is `untested`, never `passed`.
+- **`call` lines record how each call was read:** where it is, the phrase exactly as written (every word that makes up the call), and the definition it resolved to. One line per call, on one line, in exactly that shape, so tools can parse them. Keep a resolution until the call or that task's contract changes; then resolve again and say so if the answer moved.
+- **`story` and `rule` lines record the last verified build's results.** A story is `passed`, `failed`, or `untested` with a reason. A rule is `tested` (with how many tests), `failed`, or `untested` with a reason. Write what the tests actually did. A test that couldn't run (missing credentials, no network) is `untested`, never `passed`.
 - Compute fingerprints with an actual tool, using a stated hash algorithm and real block contents. The short strings above are illustrative placeholders, not build evidence.
 - Update the successful baseline only after verification passes. Preserve it on failure and record test evidence honestly.
 - Reuse settled choices and unaffected code. Rebuilding is not permission to redesign the app.
 
 ### Conformance
 
-`conformance/` in the Special repository holds small programs and the behavior any interpreter must produce from them. If you're unsure how a construct should behave, the matching case is the answer. A disagreement between this file and a case is a bug in one of them; say so.
+If the Special repository (github.com/special-lang/special) has a `conformance/` folder, it holds small programs and the behavior expected from them. When you're unsure how a construct should behave and a matching case exists, follow the case. A disagreement between this file and a case is a bug in one of them; say so.
 
 ### Tracing code back
 
@@ -1080,11 +1112,11 @@ Every generated region of code opens with a comment naming the block it came fro
 export function addBook(title: string) {
 ```
 
-The lock holds the other half: each block's spec fingerprint and the fingerprint of the code it became. With both, `check special` verifies that:
+The lock holds the other half: each block's spec fingerprint and the fingerprint of the code it became. With both, `check special` checks that:
 
 - every block has code;
 - every `@special` comment points to a block that still exists;
-- no code changed since the last verified build without its Special changing too. When it did, someone edited by hand. Say so, and offer to bring it into Special.
+- no code changed since the last verified build without its Special changing too. When it did, it was probably edited by hand. Say so, and offer to bring it into Special.
 
 Helpers and glue code need no marker. Never invent a marker for code that doesn't come from a block.
 
@@ -1103,7 +1135,7 @@ my-app/
 ├── .settings.example    setting names, placeholder values
 ├── .settings            real values (private)
 ├── build/               generated code (committed)
-└── .special/            lock, extra specs, helpers (committed)
+└── .special/            lock, extra specs, helpers, run records (committed)
 ```
 
 - **The folder stands in for the keyword.** `things/book.special` doesn't need a `thing Book` header. Its file name is its name: capitalize each word and join them, exactly as spelled. `plant.special` → `Plant`, `plant-list.special` → `PlantList`, `saved-todos.special` → `SavedTodos`. Never singularize or pluralize. A header inside the file wins if both are present.
@@ -1128,7 +1160,7 @@ special: half-star ratings
 
 because readers said 4 vs 5 was too coarse
 ~ thing Book.rating     0.5 to 5 in steps of 0.5
-~ surface Shelf          shows half stars
+~ surface BookPage       shows half stars
 + story "rating a book 4.5"
 
 Special-Decisions: 1 new, 0 assumed
@@ -1140,7 +1172,7 @@ Mark generated code as generated (for example `build/** linguist-generated=true`
 
 ## A note on compute
 
-Special assumes thinking is cheap and getting cheaper. Most of its upkeep (tidying, checking, reading back, small builds) should run comfortably on a small local model. Larger builds benefit from a stronger one. Nothing in Special should depend on a paid service, and nothing should be skipped to save effort. If a check is worth doing, do it.
+Special assumes thinking is cheap and getting cheaper. The aim is that most of its upkeep (tidying, checking, reading back, small builds) runs comfortably on a small local model, and that a stronger one helps with larger builds. Special itself shouldn't require a paid service; a project may choose one, through a connection. Nothing should be skipped to save effort. If a check is worth doing, do it.
 
 ---
 
